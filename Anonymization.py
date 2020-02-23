@@ -238,10 +238,10 @@ ax = pl.subplot(1,1,1)
 plot_rects(dataFrame, ax, rects, column_x, column_y, facecolor='r')
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 
-dfn = build_anonymized_dataset(
+k_anonymous_dataframe = build_anonymized_dataset(
     dataFrame, finished_partitions, feature_columns, sensitive_column)
 
-print(dfn.sort_values(feature_columns+[sensitive_column]))
+print(k_anonymous_dataframe.sort_values(feature_columns+[sensitive_column]))
 
 
 finished_l_diverse_partitions = partition_dataset(
@@ -260,10 +260,10 @@ plot_rects(dataFrame, ax, l_diverse_rects, column_x,
 # plot_rects(dataFrame, ax, rects, column_x, column_y, facecolor='r')
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 
-dfl = build_anonymized_dataset(
+l_diverse_dataframe = build_anonymized_dataset(
     dataFrame, finished_l_diverse_partitions, feature_columns, sensitive_column)
 
-print(dfl.sort_values([column_x, column_y, sensitive_column]))
+print(l_diverse_dataframe.sort_values([column_x, column_y, sensitive_column]))
 
 global_freqs = {}
 total_count = float(len(dataFrame))
@@ -280,10 +280,10 @@ finished_t_close_partitions = partition_dataset(
 
 print(len(finished_t_close_partitions))
 
-dft = build_anonymized_dataset(
+t_close_dataframe = build_anonymized_dataset(
     dataFrame, finished_t_close_partitions, feature_columns, sensitive_column)
 
-print(dft.sort_values([column_x, column_y, sensitive_column]))
+print(t_close_dataframe.sort_values([column_x, column_y, sensitive_column]))
 
 column_x, column_y = feature_columns[:2]
 t_close_rects = get_partition_rects(
@@ -295,3 +295,8 @@ plot_rects(dataFrame, ax, t_close_rects, column_x,
            column_y, edgecolor='b', facecolor='b')
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 pl.show()
+
+
+k_anonymous_dataframe.to_csv('k-anon.csv');
+l_diverse_dataframe.to_csv('l-diverse.csv');
+t_close_dataframe.to_csv('t-close.csv');
