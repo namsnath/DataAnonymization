@@ -153,8 +153,8 @@ def build_anonymized_dataset(dataFrame, partitions, feature_columns, sensitive_c
             aggregations[column] = agg_numerical_column
     rows = []
     for i, partition in enumerate(partitions):
-        if i % 100 == 1:
-            print("Finished {} partitions...".format(i))
+        # if i % 100 == 1:
+        #     print("Finished {} partitions...".format(i))
         if max_partitions is not None and i > max_partitions:
             break
         grouped_columns = dataFrame.loc[partition].agg(
@@ -213,17 +213,18 @@ for header in categorical_variables:
 
 print("Data Preview:")
 print(dataFrame.head())
+print('\n\n')
 
 full_spans = get_spans(dataFrame, dataFrame.index)
-print(full_spans)
-
+# print('Spans: ', full_spans)
+# print('\n\n')
 
 feature_columns = ['age', 'education-num']
 sensitive_column = 'income'
 finished_partitions = partition_dataset(
     dataFrame, feature_columns, sensitive_column, full_spans, is_k_anonymous)
 
-print(len(finished_partitions))
+print('K-Anon Partition Count: ', len(finished_partitions))
 
 
 indexes = build_indexes(dataFrame)
@@ -231,23 +232,27 @@ column_x, column_y = feature_columns[:2]
 rects = get_partition_rects(
     dataFrame, finished_partitions, column_x, column_y, indexes, offsets=[0.0, 0.0])
 
-print(rects[:10])
+# print(rects[:10])
 
 pl.figure(1, figsize=(20, 20))
 ax = pl.subplot(1,1,1)
-plot_rects(dataFrame, ax, rects, column_x, column_y, facecolor='r')
+plot_rects(dataFrame, ax, rects, column_x, column_y, edgecolor='black')
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 
 k_anonymous_dataframe = build_anonymized_dataset(
     dataFrame, finished_partitions, feature_columns, sensitive_column)
 
+print('K-Anon Dataframe:')
 print(k_anonymous_dataframe.sort_values(feature_columns+[sensitive_column]))
+print('\n\n')
+
+
 
 
 finished_l_diverse_partitions = partition_dataset(
     dataFrame, feature_columns, sensitive_column, full_spans, lambda *args: is_k_anonymous(*args) and is_l_diverse(*args))
 
-print(len(finished_l_diverse_partitions))
+print('L-Diverse Partition Count: ', len(finished_l_diverse_partitions))
 
 column_x, column_y = feature_columns[:2]
 l_diverse_rects = get_partition_rects(
@@ -256,14 +261,16 @@ l_diverse_rects = get_partition_rects(
 pl.figure(2, figsize=(20, 20))
 ax = pl.subplot(1,1,1)
 plot_rects(dataFrame, ax, l_diverse_rects, column_x,
-           column_y, edgecolor='b', facecolor='b')
+           column_y, edgecolor='black')
 # plot_rects(dataFrame, ax, rects, column_x, column_y, facecolor='r')
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 
 l_diverse_dataframe = build_anonymized_dataset(
     dataFrame, finished_l_diverse_partitions, feature_columns, sensitive_column)
 
+print('L-Diverse Dataframe: ')
 print(l_diverse_dataframe.sort_values([column_x, column_y, sensitive_column]))
+print('\n\n')
 
 global_freqs = {}
 total_count = float(len(dataFrame))
@@ -273,17 +280,21 @@ for value, count in group_counts.to_dict().items():
     p = count/total_count
     global_freqs[value] = p
 
-print(global_freqs)
+# print('Global Frequencies: ')
+# print(global_freqs)
+# print('\n\n')
 
 finished_t_close_partitions = partition_dataset(
     dataFrame, feature_columns, sensitive_column, full_spans, lambda *args: is_k_anonymous(*args) and is_t_close(*args, global_freqs))
 
-print(len(finished_t_close_partitions))
+print('T-Close Partition Count: ', len(finished_t_close_partitions))
 
 t_close_dataframe = build_anonymized_dataset(
     dataFrame, finished_t_close_partitions, feature_columns, sensitive_column)
 
+print('T-Close Dataframe: ')
 print(t_close_dataframe.sort_values([column_x, column_y, sensitive_column]))
+print('\n\n')
 
 column_x, column_y = feature_columns[:2]
 t_close_rects = get_partition_rects(
@@ -292,7 +303,7 @@ t_close_rects = get_partition_rects(
 pl.figure(3, figsize=(20, 20))
 ax = pl.subplot(1,1,1)
 plot_rects(dataFrame, ax, t_close_rects, column_x,
-           column_y, edgecolor='b', facecolor='b')
+           column_y, edgecolor='black')
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 pl.show()
 
