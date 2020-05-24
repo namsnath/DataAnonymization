@@ -382,8 +382,13 @@ sd = {
     "t": t_close_dataframe.std(),
 }
 
-def calc_diff(orig_val, new_val):
-    return (new_val - orig_val) / orig_val * 100
+def calc_diff(orig_val, new_val, round_to=-1):
+    val = ((new_val - orig_val) / orig_val * 100)
+
+    if round_to == -1:
+        return val
+
+    return round(val, round_to)
 
 diffs = {
     "means": {
@@ -443,6 +448,24 @@ print(tabulate(table_age, headers="firstrow"))
 
 print("\nEducation:")
 print(tabulate(table_edu, headers="firstrow"))
+
+output_csv = """
+K-Anonymity,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}
+L-Diversity,{10},{11},{12},{13},{14},{15},{16},{17},{18},{19}
+T-Closeness,{20},{21},{22},{23},{24},{25},{26},{27},{28},{29}
+""".format(
+    K_VALUE, len(finished_partitions), 
+    means["k"][0], diffs["means"]["age"]["k"], means["k"][1], diffs["means"]["edu"]["k"],
+    sd["k"][0], diffs["sd"]["age"]["k"], sd["k"][1], diffs["sd"]["edu"]["k"],
+
+    L_VALUE, len(finished_l_diverse_partitions), 
+    means["l"][0], diffs["means"]["age"]["l"], means["l"][1], diffs["means"]["edu"]["l"],
+    sd["l"][0], diffs["sd"]["age"]["l"], sd["l"][1], diffs["sd"]["edu"]["l"],
+
+    T_VALUE, len(finished_t_close_partitions), 
+    means["t"][0], diffs["means"]["age"]["t"], means["t"][1], diffs["means"]["edu"]["t"],
+    sd["t"][0], diffs["sd"]["age"]["t"], sd["t"][1], diffs["sd"]["edu"]["t"]
+)
 
 k_anonymous_dataframe.to_csv("k-anon.csv")
 l_diverse_dataframe.to_csv("l-diverse.csv")
