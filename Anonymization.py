@@ -260,9 +260,7 @@ l_diverse_rects = get_partition_rects(
 
 pl.figure(2, figsize=(20, 20))
 ax = pl.subplot(1,1,1)
-plot_rects(dataFrame, ax, l_diverse_rects, column_x,
-           column_y, edgecolor='black')
-# plot_rects(dataFrame, ax, rects, column_x, column_y, facecolor='r')
+plot_rects(dataFrame, ax, l_diverse_rects, column_x, column_y, edgecolor='black')
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 
 l_diverse_dataframe = build_anonymized_dataset(
@@ -271,6 +269,10 @@ l_diverse_dataframe = build_anonymized_dataset(
 print('L-Diverse Dataframe: ')
 print(l_diverse_dataframe.sort_values([column_x, column_y, sensitive_column]))
 print('\n\n')
+
+
+
+
 
 global_freqs = {}
 total_count = float(len(dataFrame))
@@ -283,6 +285,10 @@ for value, count in group_counts.to_dict().items():
 # print('Global Frequencies: ')
 # print(global_freqs)
 # print('\n\n')
+
+
+
+
 
 finished_t_close_partitions = partition_dataset(
     dataFrame, feature_columns, sensitive_column, full_spans, lambda *args: is_k_anonymous(*args) and is_t_close(*args, global_freqs))
@@ -302,10 +308,47 @@ t_close_rects = get_partition_rects(
 
 pl.figure(3, figsize=(20, 20))
 ax = pl.subplot(1,1,1)
-plot_rects(dataFrame, ax, t_close_rects, column_x,
-           column_y, edgecolor='black')
+plot_rects(dataFrame, ax, t_close_rects, column_x, column_y, edgecolor='black')
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 pl.show()
+
+means = {
+	'k': k_anonymous_dataframe.mean(),
+	'l': l_diverse_dataframe.mean(),
+	't': t_close_dataframe.mean(),
+}
+
+sd = {
+	'k': k_anonymous_dataframe.std(),
+	'l': l_diverse_dataframe.std(),
+	't': t_close_dataframe.std(),
+}
+
+print('\n\nMeans: ')
+print('\nK:')
+print('Age: ', means['k'][0])
+print('Edu: ', means['k'][1])
+
+print('\nL:')
+print('Age: ', means['l'][0])
+print('Edu: ', means['l'][1])
+
+print('\nT:')
+print('Age: ', means['t'][0])
+print('Edu: ', means['t'][1])
+
+print('\n\nSD: ')
+print('\nK:')
+print('Age: ', sd['k'][0])
+print('Edu: ', sd['k'][1])
+
+print('\nL:')
+print('Age: ', sd['l'][0])
+print('Edu: ', sd['l'][1])
+
+print('\nT:')
+print('Age: ', sd['t'][0])
+print('Edu: ', sd['t'][1])
 
 
 k_anonymous_dataframe.to_csv('k-anon.csv');
