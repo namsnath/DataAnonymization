@@ -1,6 +1,13 @@
 import pandas as pd
 import matplotlib.pylab as pl
 import matplotlib.patches as patches
+from tabulate import tabulate
+
+K_VALUE = 3
+L_VALUE = 2
+T_VALUE = 0.2
+DISPLAY_VERBOSE = False
+DISPLAY_PLOTS = False
 
 data_headers = (
     "age",
@@ -63,7 +70,7 @@ def split(dataFrame, partition, column):
         return (dfl, dfr)
 
 
-def is_k_anonymous(dataFrame, partition, sensitive_column, k=3):
+def is_k_anonymous(dataFrame, partition, sensitive_column, k=K_VALUE):
     if len(partition) < k:
         return False
     return True
@@ -195,7 +202,7 @@ def diversity(dataFrame, partition, column):
     return len(dataFrame[column][partition].unique())
 
 
-def is_l_diverse(dataFrame, partition, sensitive_column, l=2):
+def is_l_diverse(dataFrame, partition, sensitive_column, l=L_VALUE):
     return diversity(dataFrame, partition, sensitive_column) >= l
 
 
@@ -211,7 +218,7 @@ def t_closeness(dataFrame, partition, column, global_freqs):
     return d_max
 
 
-def is_t_close(dataFrame, partition, sensitive_column, global_freqs, p=0.2):
+def is_t_close(dataFrame, partition, sensitive_column, global_freqs, p=T_VALUE):
     if not sensitive_column in categorical_variables:
         raise ValueError("this method only works for categorial values")
     return t_closeness(dataFrame, partition, sensitive_column, global_freqs) <= p
@@ -233,9 +240,10 @@ dataFrame = pd.read_csv(
 for header in categorical_variables:
     dataFrame[header] = dataFrame[header].astype("category")
 
-print("Data Preview:")
-print(dataFrame.head())
-print("\n\n")
+if DISPLAY_VERBOSE:
+    print("Data Preview:")
+    print(dataFrame.head())
+    print("\n\n")
 
 full_spans = get_spans(dataFrame, dataFrame.index)
 # print('Spans: ', full_spans)
@@ -243,12 +251,12 @@ full_spans = get_spans(dataFrame, dataFrame.index)
 
 feature_columns = ["age", "education-num"]
 sensitive_column = "income"
+
+# K-ANONYMITY
+
 finished_partitions = partition_dataset(
     dataFrame, feature_columns, sensitive_column, full_spans, is_k_anonymous
 )
-
-print("K-Anon Partition Count: ", len(finished_partitions))
-
 
 indexes = build_indexes(dataFrame)
 column_x, column_y = feature_columns[:2]
@@ -267,11 +275,7 @@ k_anonymous_dataframe = build_anonymized_dataset(
     dataFrame, finished_partitions, feature_columns, sensitive_column
 )
 
-print("K-Anon Dataframe:")
-print(k_anonymous_dataframe.sort_values(feature_columns + [sensitive_column]))
-print("\n\n")
-
-
+# L-DIVERSITY
 
 finished_l_diverse_partitions = partition_dataset(
     dataFrame,
@@ -280,8 +284,6 @@ finished_l_diverse_partitions = partition_dataset(
     full_spans,
     lambda *args: is_k_anonymous(*args) and is_l_diverse(*args),
 )
-
-print("L-Diverse Partition Count: ", len(finished_l_diverse_partitions))
 
 column_x, column_y = feature_columns[:2]
 l_diverse_rects = get_partition_rects(
@@ -302,11 +304,7 @@ l_diverse_dataframe = build_anonymized_dataset(
     dataFrame, finished_l_diverse_partitions, feature_columns, sensitive_column
 )
 
-print("L-Diverse Dataframe: ")
-print(l_diverse_dataframe.sort_values([column_x, column_y, sensitive_column]))
-print("\n\n")
-
-
+# T-CLOSENESS
 
 global_freqs = {}
 total_count = float(len(dataFrame))
@@ -328,15 +326,9 @@ finished_t_close_partitions = partition_dataset(
     lambda *args: is_k_anonymous(*args) and is_t_close(*args, global_freqs),
 )
 
-print("T-Close Partition Count: ", len(finished_t_close_partitions))
-
 t_close_dataframe = build_anonymized_dataset(
     dataFrame, finished_t_close_partitions, feature_columns, sensitive_column
-)
-
-print("T-Close Dataframe: ")
-print(t_close_dataframe.sort_values([column_x, column_y, sensitive_column]))
-print("\n\n")
+)   
 
 column_x, column_y = feature_columns[:2]
 t_close_rects = get_partition_rects(
@@ -352,46 +344,105 @@ pl.figure(3, figsize=(20, 20))
 ax = pl.subplot(1, 1, 1)
 plot_rects(dataFrame, ax, t_close_rects, column_x, column_y, edgecolor="black")
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
-pl.show()
+    
+
+
+
+if DISPLAY_VERBOSE:
+    print("K-Anon Partition Count: ", len(finished_partitions))
+    print("K-Anon Dataframe:")
+    print(k_anonymous_dataframe.sort_values(feature_columns + [sensitive_column]))
+    print("\n\n")
+
+    print("L-Diverse Partition Count: ", len(finished_l_diverse_partitions))
+    print("L-Diverse Dataframe: ")
+    print(l_diverse_dataframe.sort_values([column_x, column_y, sensitive_column]))
+    print("\n\n")
+
+    print("T-Close Partition Count: ", len(finished_t_close_partitions))
+    print("T-Close Dataframe: ")
+    print(t_close_dataframe.sort_values([column_x, column_y, sensitive_column]))
+    print("\n\n")
+
+if DISPLAY_PLOTS:
+    pl.show()
+
 
 means = {
+    "original": (dataFrame["age"].mean(), dataFrame["education-num"].mean()), 
     "k": k_anonymous_dataframe.mean(),
     "l": l_diverse_dataframe.mean(),
     "t": t_close_dataframe.mean(),
 }
 
 sd = {
+    "original": (dataFrame["age"].std(), dataFrame["education-num"].std()),
     "k": k_anonymous_dataframe.std(),
     "l": l_diverse_dataframe.std(),
     "t": t_close_dataframe.std(),
 }
 
-print("\n\nMeans: ")
-print("\nK:")
-print("Age: ", means["k"][0])
-print("Edu: ", means["k"][1])
+def calc_diff(orig_val, new_val):
+    return (new_val - orig_val) / orig_val * 100
 
-print("\nL:")
-print("Age: ", means["l"][0])
-print("Edu: ", means["l"][1])
+diffs = {
+    "means": {
+        "age": {
+            "k": calc_diff(means["original"][0], means["k"][0]),
+            "l": calc_diff(means["original"][0], means["l"][0]),
+            "t": calc_diff(means["original"][0], means["t"][0]),
+        },
+        "edu": {
+            "k": calc_diff(means["original"][1], means["k"][1]),
+            "l": calc_diff(means["original"][1], means["l"][1]),
+            "t": calc_diff(means["original"][1], means["t"][1]),
+        }
+    },
+    "sd": {
+       "age": {
+            "k": calc_diff(sd["original"][0], sd["k"][0]),
+            "l": calc_diff(sd["original"][0], sd["l"][0]),
+            "t": calc_diff(sd["original"][0], sd["t"][0]),
+        },
+        "edu": {
+            "k": calc_diff(sd["original"][1], sd["k"][1]),
+            "l": calc_diff(sd["original"][1], sd["l"][1]),
+            "t": calc_diff(sd["original"][1], sd["t"][1]),
+        }
+    }
+}
 
-print("\nT:")
-print("Age: ", means["t"][0])
-print("Edu: ", means["t"][1])
+table_age = [
+    ["Algorithm", "Mean", "Mean Diff %", "SD", "SD Diff %"],
+    ["Original", means["original"][0], "", sd["original"][0], ""],
+    ["K-Anonymity", means["k"][0], diffs["means"]["age"]["k"], sd["k"][0], diffs["sd"]["age"]["k"]],
+    ["L-Diversity", means["l"][0], diffs["means"]["age"]["l"], sd["l"][0], diffs["sd"]["age"]["l"]],
+    ["T-Closeness", means["t"][0], diffs["means"]["age"]["t"], sd["t"][0], diffs["sd"]["age"]["t"]]
+]
 
-print("\n\nSD: ")
-print("\nK:")
-print("Age: ", sd["k"][0])
-print("Edu: ", sd["k"][1])
+table_edu = [
+    ["Algorithm", "Mean", "Mean Diff %", "SD", "SD Diff %"],
+    ["Original", means["original"][1], "", sd["original"][1], ""],
+    ["K-Anonymity", means["k"][1], diffs["means"]["edu"]["k"], sd["k"][1], diffs["sd"]["edu"]["k"]],
+    ["L-Diversity", means["l"][1], diffs["means"]["edu"]["l"], sd["l"][1], diffs["sd"]["edu"]["l"]],
+    ["T-Closeness", means["t"][1], diffs["means"]["edu"]["t"], sd["t"][1], diffs["sd"]["edu"]["t"]]
+]
 
-print("\nL:")
-print("Age: ", sd["l"][0])
-print("Edu: ", sd["l"][1])
+table_part_count = [
+    ["Algorithm", "Value", "Partition Count"],
+    ["K-Anonymity", K_VALUE, len(finished_partitions)],
+    ["L-Diversity", L_VALUE, len(finished_l_diverse_partitions)],
+    ["T-Closeness", T_VALUE, len(finished_t_close_partitions)]
+]
 
-print("\nT:")
-print("Age: ", sd["t"][0])
-print("Edu: ", sd["t"][1])
+print("\nPartitions:")
+print(tabulate(table_part_count, headers="firstrow"))
 
+print("\nAge:")
+print(tabulate(table_age, headers="firstrow"))
+
+print("\nEducation:")
+print(tabulate(table_edu, headers="firstrow"))
 
 k_anonymous_dataframe.to_csv("k-anon.csv")
 l_diverse_dataframe.to_csv("l-diverse.csv")
