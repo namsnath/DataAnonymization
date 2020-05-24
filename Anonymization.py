@@ -3,34 +3,36 @@ import matplotlib.pylab as pl
 import matplotlib.patches as patches
 
 data_headers = (
-    'age',
-    'workclass',
-    'fnlwgt',
-    'education',
-    'education-num',
-    'marital-status',
-    'occupation',
-    'relationship',
-    'race',
-    'sex',
-    'capital-gain',
-    'capital-loss',
-    'hours-per-week',
-    'native-country',
-    'income',
+    "age",
+    "workclass",
+    "fnlwgt",
+    "education",
+    "education-num",
+    "marital-status",
+    "occupation",
+    "relationship",
+    "race",
+    "sex",
+    "capital-gain",
+    "capital-loss",
+    "hours-per-week",
+    "native-country",
+    "income",
 )
 
-categorical_variables = set((
-    'workclass',
-    'education',
-    'marital-status',
-    'occupation',
-    'relationship',
-    'sex',
-    'native-country',
-    'race',
-    'income',
-))
+categorical_variables = set(
+    (
+        "workclass",
+        "education",
+        "marital-status",
+        "occupation",
+        "relationship",
+        "sex",
+        "native-country",
+        "race",
+        "income",
+    )
+)
 
 
 def get_spans(dataFrame, partition, scale=None):
@@ -40,7 +42,7 @@ def get_spans(dataFrame, partition, scale=None):
             span = len(dataFrame[column][partition].unique())
         else:
             span = dataFrame[column][partition].max()
-            - dataFrame[column][partition].min()
+            -dataFrame[column][partition].min()
         if scale is not None:
             span = span / scale[column]
         spans[column] = span
@@ -51,8 +53,8 @@ def split(dataFrame, partition, column):
     dfp = dataFrame[column][partition]
     if column in categorical_variables:
         values = dfp.unique()
-        lv = set(values[:len(values)//2])
-        rv = set(values[len(values)//2:])
+        lv = set(values[: len(values) // 2])
+        rv = set(values[len(values) // 2 :])
         return dfp.index[dfp.isin(lv)], dfp.index[dfp.isin(rv)]
     else:
         median = dfp.median()
@@ -75,7 +77,9 @@ def partition_dataset(dataFrame, feature_columns, sensitive_column, scale, is_va
         spans = get_spans(dataFrame[feature_columns], partition, scale)
         for column, span in sorted(spans.items(), key=lambda x: -x[1]):
             lp, rp = split(dataFrame, partition, column)
-            if not is_valid(dataFrame, lp, sensitive_column) or not is_valid(dataFrame, rp, sensitive_column):
+            if not is_valid(dataFrame, lp, sensitive_column) or not is_valid(
+                dataFrame, rp, sensitive_column
+            ):
                 continue
             partitions.extend((lp, rp))
             break
@@ -95,7 +99,7 @@ def build_indexes(dataFrame):
 def get_coords(dataFrame, column, partition, indexes, offset=0.1):
     if column in categorical_variables:
         sv = dataFrame[column][partition].sort_values()
-        l, r = indexes[column][sv[sv.index[0]]], indexes[column][sv[sv.index[-1]]]+1.0
+        l, r = indexes[column][sv[sv.index[0]]], indexes[column][sv[sv.index[-1]]] + 1.0
     else:
         sv = dataFrame[column][partition].sort_values()
         next_value = sv[sv.index[-1]]
@@ -109,27 +113,38 @@ def get_coords(dataFrame, column, partition, indexes, offset=0.1):
     return l, r
 
 
-def get_partition_rects(dataFrame, partitions, column_x, column_y, indexes, offsets=[0.1, 0.1]):
+def get_partition_rects(
+    dataFrame, partitions, column_x, column_y, indexes, offsets=[0.1, 0.1]
+):
     rects = []
     for partition in partitions:
-        xl, xr = get_coords(dataFrame, column_x, partition,
-                            indexes, offset=offsets[0])
-        yl, yr = get_coords(dataFrame, column_y, partition,
-                            indexes, offset=offsets[1])
+        xl, xr = get_coords(dataFrame, column_x, partition, indexes, offset=offsets[0])
+        yl, yr = get_coords(dataFrame, column_y, partition, indexes, offset=offsets[1])
         rects.append(((xl, yl), (xr, yr)))
     return rects
 
 
 def get_bounds(dataFrame, column, indexes, offset=1.0):
     if column in categorical_variables:
-        return 0-offset, len(indexes[column])+offset
-    return dataFrame[column].min()-offset, dataFrame[column].max()+offset
+        return 0 - offset, len(indexes[column]) + offset
+    return dataFrame[column].min() - offset, dataFrame[column].max() + offset
 
 
-def plot_rects(dataFrame, ax, rects, column_x, column_y, edgecolor='black', facecolor='none'):
+def plot_rects(
+    dataFrame, ax, rects, column_x, column_y, edgecolor="black", facecolor="none"
+):
     for (xl, yl), (xr, yr) in rects:
-        ax.add_patch(patches.Rectangle((xl, yl), xr-xl, yr-yl, linewidth=1,
-                                       edgecolor=edgecolor, facecolor=facecolor, alpha=0.5))
+        ax.add_patch(
+            patches.Rectangle(
+                (xl, yl),
+                xr - xl,
+                yr - yl,
+                linewidth=1,
+                edgecolor=edgecolor,
+                facecolor=facecolor,
+                alpha=0.5,
+            )
+        )
     ax.set_xlim(*get_bounds(dataFrame, column_x, indexes))
     ax.set_ylim(*get_bounds(dataFrame, column_y, indexes))
     ax.set_xlabel(column_x)
@@ -137,14 +152,16 @@ def plot_rects(dataFrame, ax, rects, column_x, column_y, edgecolor='black', face
 
 
 def agg_categorical_column(series):
-    return [','.join(set(series))]
+    return [",".join(set(series))]
 
 
 def agg_numerical_column(series):
     return [series.mean()]
 
 
-def build_anonymized_dataset(dataFrame, partitions, feature_columns, sensitive_column, max_partitions=None):
+def build_anonymized_dataset(
+    dataFrame, partitions, feature_columns, sensitive_column, max_partitions=None
+):
     aggregations = {}
     for column in feature_columns:
         if column in categorical_variables:
@@ -157,19 +174,19 @@ def build_anonymized_dataset(dataFrame, partitions, feature_columns, sensitive_c
         #     print("Finished {} partitions...".format(i))
         if max_partitions is not None and i > max_partitions:
             break
-        grouped_columns = dataFrame.loc[partition].agg(
-            aggregations, squeeze=False)
-        sensitive_counts = dataFrame.loc[partition].groupby(
-            sensitive_column).agg({sensitive_column: 'count'})
+        grouped_columns = dataFrame.loc[partition].agg(aggregations, squeeze=False)
+        sensitive_counts = (
+            dataFrame.loc[partition]
+            .groupby(sensitive_column)
+            .agg({sensitive_column: "count"})
+        )
         values = grouped_columns.iloc[0].to_dict()
         for sensitive_value, count in sensitive_counts[sensitive_column].items():
             if count == 0:
                 continue
-            values.update({
-                sensitive_column: sensitive_value,
-                'count': count,
-
-            })
+            values.update(
+                {sensitive_column: sensitive_value, "count": count,}
+            )
             rows.append(values.copy())
     return pd.DataFrame(rows)
 
@@ -185,11 +202,10 @@ def is_l_diverse(dataFrame, partition, sensitive_column, l=2):
 def t_closeness(dataFrame, partition, column, global_freqs):
     total_count = float(len(partition))
     d_max = None
-    group_counts = dataFrame.loc[partition].groupby(column)[
-        column].agg('count')
+    group_counts = dataFrame.loc[partition].groupby(column)[column].agg("count")
     for value, count in group_counts.to_dict().items():
-        p = count/total_count
-        d = abs(p-global_freqs[value])
+        p = count / total_count
+        d = abs(p - global_freqs[value])
         if d_max is None or d > d_max:
             d_max = d
     return d_max
@@ -204,82 +220,99 @@ def is_t_close(dataFrame, partition, sensitive_column, global_freqs, p=0.2):
 ##################################################################################################
 
 # Read the CSV into a Pandas Dataframe
-dataFrame = pd.read_csv("./data/adult.all.txt", sep=", ",
-                        header=None, names=data_headers, index_col=False, engine='python')
+dataFrame = pd.read_csv(
+    "./data/adult.all.txt",
+    sep=", ",
+    header=None,
+    names=data_headers,
+    index_col=False,
+    engine="python",
+)
 
 # Assign type to catgorical variables
 for header in categorical_variables:
-    dataFrame[header] = dataFrame[header].astype('category')
+    dataFrame[header] = dataFrame[header].astype("category")
 
 print("Data Preview:")
 print(dataFrame.head())
-print('\n\n')
+print("\n\n")
 
 full_spans = get_spans(dataFrame, dataFrame.index)
 # print('Spans: ', full_spans)
 # print('\n\n')
 
-feature_columns = ['age', 'education-num']
-sensitive_column = 'income'
+feature_columns = ["age", "education-num"]
+sensitive_column = "income"
 finished_partitions = partition_dataset(
-    dataFrame, feature_columns, sensitive_column, full_spans, is_k_anonymous)
+    dataFrame, feature_columns, sensitive_column, full_spans, is_k_anonymous
+)
 
-print('K-Anon Partition Count: ', len(finished_partitions))
+print("K-Anon Partition Count: ", len(finished_partitions))
 
 
 indexes = build_indexes(dataFrame)
 column_x, column_y = feature_columns[:2]
 rects = get_partition_rects(
-    dataFrame, finished_partitions, column_x, column_y, indexes, offsets=[0.0, 0.0])
+    dataFrame, finished_partitions, column_x, column_y, indexes, offsets=[0.0, 0.0]
+)
 
 # print(rects[:10])
 
 pl.figure(1, figsize=(20, 20))
-ax = pl.subplot(1,1,1)
-plot_rects(dataFrame, ax, rects, column_x, column_y, edgecolor='black')
+ax = pl.subplot(1, 1, 1)
+plot_rects(dataFrame, ax, rects, column_x, column_y, edgecolor="black")
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 
 k_anonymous_dataframe = build_anonymized_dataset(
-    dataFrame, finished_partitions, feature_columns, sensitive_column)
+    dataFrame, finished_partitions, feature_columns, sensitive_column
+)
 
-print('K-Anon Dataframe:')
-print(k_anonymous_dataframe.sort_values(feature_columns+[sensitive_column]))
-print('\n\n')
-
+print("K-Anon Dataframe:")
+print(k_anonymous_dataframe.sort_values(feature_columns + [sensitive_column]))
+print("\n\n")
 
 
 
 finished_l_diverse_partitions = partition_dataset(
-    dataFrame, feature_columns, sensitive_column, full_spans, lambda *args: is_k_anonymous(*args) and is_l_diverse(*args))
+    dataFrame,
+    feature_columns,
+    sensitive_column,
+    full_spans,
+    lambda *args: is_k_anonymous(*args) and is_l_diverse(*args),
+)
 
-print('L-Diverse Partition Count: ', len(finished_l_diverse_partitions))
+print("L-Diverse Partition Count: ", len(finished_l_diverse_partitions))
 
 column_x, column_y = feature_columns[:2]
 l_diverse_rects = get_partition_rects(
-    dataFrame, finished_l_diverse_partitions, column_x, column_y, indexes, offsets=[0.0, 0.0])
+    dataFrame,
+    finished_l_diverse_partitions,
+    column_x,
+    column_y,
+    indexes,
+    offsets=[0.0, 0.0],
+)
 
 pl.figure(2, figsize=(20, 20))
-ax = pl.subplot(1,1,1)
-plot_rects(dataFrame, ax, l_diverse_rects, column_x, column_y, edgecolor='black')
+ax = pl.subplot(1, 1, 1)
+plot_rects(dataFrame, ax, l_diverse_rects, column_x, column_y, edgecolor="black")
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 
 l_diverse_dataframe = build_anonymized_dataset(
-    dataFrame, finished_l_diverse_partitions, feature_columns, sensitive_column)
+    dataFrame, finished_l_diverse_partitions, feature_columns, sensitive_column
+)
 
-print('L-Diverse Dataframe: ')
+print("L-Diverse Dataframe: ")
 print(l_diverse_dataframe.sort_values([column_x, column_y, sensitive_column]))
-print('\n\n')
-
-
+print("\n\n")
 
 
 
 global_freqs = {}
 total_count = float(len(dataFrame))
-group_counts = dataFrame.groupby(sensitive_column)[
-    sensitive_column].agg('count')
+group_counts = dataFrame.groupby(sensitive_column)[sensitive_column].agg("count")
 for value, count in group_counts.to_dict().items():
-    p = count/total_count
+    p = count / total_count
     global_freqs[value] = p
 
 # print('Global Frequencies: ')
@@ -287,70 +320,80 @@ for value, count in group_counts.to_dict().items():
 # print('\n\n')
 
 
-
-
-
 finished_t_close_partitions = partition_dataset(
-    dataFrame, feature_columns, sensitive_column, full_spans, lambda *args: is_k_anonymous(*args) and is_t_close(*args, global_freqs))
+    dataFrame,
+    feature_columns,
+    sensitive_column,
+    full_spans,
+    lambda *args: is_k_anonymous(*args) and is_t_close(*args, global_freqs),
+)
 
-print('T-Close Partition Count: ', len(finished_t_close_partitions))
+print("T-Close Partition Count: ", len(finished_t_close_partitions))
 
 t_close_dataframe = build_anonymized_dataset(
-    dataFrame, finished_t_close_partitions, feature_columns, sensitive_column)
+    dataFrame, finished_t_close_partitions, feature_columns, sensitive_column
+)
 
-print('T-Close Dataframe: ')
+print("T-Close Dataframe: ")
 print(t_close_dataframe.sort_values([column_x, column_y, sensitive_column]))
-print('\n\n')
+print("\n\n")
 
 column_x, column_y = feature_columns[:2]
 t_close_rects = get_partition_rects(
-    dataFrame, finished_t_close_partitions, column_x, column_y, indexes, offsets=[0.0, 0.0])
+    dataFrame,
+    finished_t_close_partitions,
+    column_x,
+    column_y,
+    indexes,
+    offsets=[0.0, 0.0],
+)
 
 pl.figure(3, figsize=(20, 20))
-ax = pl.subplot(1,1,1)
-plot_rects(dataFrame, ax, t_close_rects, column_x, column_y, edgecolor='black')
+ax = pl.subplot(1, 1, 1)
+plot_rects(dataFrame, ax, t_close_rects, column_x, column_y, edgecolor="black")
 pl.scatter(dataFrame[column_x], dataFrame[column_y])
 pl.show()
 
 means = {
-	'k': k_anonymous_dataframe.mean(),
-	'l': l_diverse_dataframe.mean(),
-	't': t_close_dataframe.mean(),
+    "k": k_anonymous_dataframe.mean(),
+    "l": l_diverse_dataframe.mean(),
+    "t": t_close_dataframe.mean(),
 }
 
 sd = {
-	'k': k_anonymous_dataframe.std(),
-	'l': l_diverse_dataframe.std(),
-	't': t_close_dataframe.std(),
+    "k": k_anonymous_dataframe.std(),
+    "l": l_diverse_dataframe.std(),
+    "t": t_close_dataframe.std(),
 }
 
-print('\n\nMeans: ')
-print('\nK:')
-print('Age: ', means['k'][0])
-print('Edu: ', means['k'][1])
+print("\n\nMeans: ")
+print("\nK:")
+print("Age: ", means["k"][0])
+print("Edu: ", means["k"][1])
 
-print('\nL:')
-print('Age: ', means['l'][0])
-print('Edu: ', means['l'][1])
+print("\nL:")
+print("Age: ", means["l"][0])
+print("Edu: ", means["l"][1])
 
-print('\nT:')
-print('Age: ', means['t'][0])
-print('Edu: ', means['t'][1])
+print("\nT:")
+print("Age: ", means["t"][0])
+print("Edu: ", means["t"][1])
 
-print('\n\nSD: ')
-print('\nK:')
-print('Age: ', sd['k'][0])
-print('Edu: ', sd['k'][1])
+print("\n\nSD: ")
+print("\nK:")
+print("Age: ", sd["k"][0])
+print("Edu: ", sd["k"][1])
 
-print('\nL:')
-print('Age: ', sd['l'][0])
-print('Edu: ', sd['l'][1])
+print("\nL:")
+print("Age: ", sd["l"][0])
+print("Edu: ", sd["l"][1])
 
-print('\nT:')
-print('Age: ', sd['t'][0])
-print('Edu: ', sd['t'][1])
+print("\nT:")
+print("Age: ", sd["t"][0])
+print("Edu: ", sd["t"][1])
 
 
-k_anonymous_dataframe.to_csv('k-anon.csv');
-l_diverse_dataframe.to_csv('l-diverse.csv');
-t_close_dataframe.to_csv('t-close.csv');
+k_anonymous_dataframe.to_csv("k-anon.csv")
+l_diverse_dataframe.to_csv("l-diverse.csv")
+t_close_dataframe.to_csv("t-close.csv")
+
