@@ -1,3 +1,4 @@
+ 	#!/usr/bin/env python
 import pandas as pd
 import matplotlib.pylab as pl
 import matplotlib.patches as patches
@@ -6,8 +7,8 @@ import os
 import warnings
 import sys
 
-if sys.platform != "win32":
-    import pymp
+# if sys.platform != "win32":
+#     import pymp
 
 warnings.filterwarnings("ignore")
 
@@ -487,13 +488,13 @@ def anonymize(k, l, t, verbose=False, plots=False, write_files=False):
     return output_csv
 
 def main():
-    k_values = [3, 5, 7, 10]
-    l_values = [2]
-    t_values = [0.15, 0.2, 0.3, 0.4, 0.5]
-
-    # k_values = [3]
+    # k_values = [3, 5, 7, 10]
     # l_values = [2]
-    # t_values = [0.05, 0.1]
+    # t_values = [0.15, 0.2, 0.3, 0.4, 0.5]
+
+    k_values = [10]
+    l_values = [2]
+    t_values = [0.4]
 
     full_csv = ""
 
@@ -520,6 +521,6 @@ def main():
         f.write(full_csv)
 
 if __name__ == "__main__":
-    main()
-    # csv = anonymize(3, 2, 0.2)
-    # print(csv)
+    # main()
+    csv = anonymize(10, 2, 0.4, plots=True)
+    print(csv)
